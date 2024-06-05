@@ -22,7 +22,7 @@ def search_movie(name):
     if response.status_code == 200:
         data = response.json()
         if data['results']:
-            return data['results'][0]  # Return the first search result
+            return data['results'][0]
     return None
 
 def get_movie_details(movie_id):
@@ -38,8 +38,9 @@ def get_movie_details(movie_id):
 
 def lambda_handler(event, context):
     try:
-        name = event['argumentsForLambda']['input']['name']
-                
+        data = event['argumentsForLambda']['input']
+        name = data['name']
+        
         # Search for the movie by name
         movie = search_movie(name)
         if not movie:
@@ -61,31 +62,15 @@ def lambda_handler(event, context):
         
         # Prepare the item to be added to DynamoDB
         item = {
-            'id': movie_id,
+            'id': data.get('id', movie_id),
             'name': movie['title'],
-            'budget': movie_details.get('budget', 0),
-            'revenue': movie_details.get('revenue', 0),
-            'genres': [genre['name'] for genre in movie_details.get('genres', [])]
+            'budget': data.get('budget', movie_details.get('budget', 0)),
+            'revenue': data.get('revenue', movie_details.get('revenue', 0)),
+            'genres': data.get('genres', [genre['name'] for genre in movie_details.get('genres', [])])
         }
         
         # Add item to DynamoDB
         table.put_item(Item=item)
-        
-        # Format for GraphQL response
-        # gql_response = {
-        #     "data":{
-        #         "createMovies":
-        #         {
-        #             "id": item['id'],
-        #             "tmdb_id": item['tmdb_id'],
-        #             "name": item['name'],
-        #             "budget": item['budget'],
-        #             "revenue": item['revenue'],
-        #             "genres": item['genres']
-        #         }
-        #     }
-            
-        # }
         
         # Return the item
         return item
